@@ -1,5 +1,5 @@
 use clap::Parser;
-use rocket_dyn_templates::Template;
+use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
 mod handlers;
 mod logger;
@@ -14,26 +14,32 @@ struct Arguments {
 	port: u16,
 }
 
+struct App {
+	pool: Pool<Postgres>,
+}
+
 #[launch]
-fn rocket() -> _ {
+#[tokio::main]
+async fn rocket() -> _ {
 	// Setup loggers
 	// We can now use these logging macros globally
 	// trace!() | debug!() | info!() | warn!() | error!()
 	logger::setup().expect("initialize logging");
+
+	// setup postgresql pool
+	let pool = PgPoolOptions::new()
+		.max_connections(5)
+		.connect("postgres://postgres:password@localhost/test")
+		.await
+		.expect("tried to setup postgres connection pool");
 
 	// when executing the binary, we want to provide some basic config options
 	let args = Arguments::parse();
 	info!("{:?}", args); // TODO attach custom arguments as server config
 
 	// start the thing
-	rocket::build()
-		.mount(
-			"/",
-			routes![
-				handlers::index,
-				handlers::snippet_view,
-				handlers::snippet_create
-			],
-		)
-		.attach(Template::fairing())
+	rocket::build().manage(App { pool }).mount(
+		"/",
+		routes![handlers::snippet_view, handlers::snippet_create],
+	)
 }

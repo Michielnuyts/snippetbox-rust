@@ -1,17 +1,6 @@
 use rocket::{response::status::NotFound, serde::json::Json};
-use rocket_dyn_templates::{context, Template};
 
-#[get("/")]
-pub fn index() -> Template {
-	Template::render(
-		"home",
-		context! {
-			title: "Test"
-		},
-	)
-}
-
-#[get("/snippet/view/<id>")]
+#[get("/snippet/<id>")]
 pub fn snippet_view(id: usize) -> Result<Json<String>, NotFound<String>> {
 	if id < 1 {
 		return Err(NotFound(String::from("Did not find resource")));
