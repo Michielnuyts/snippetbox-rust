@@ -1,4 +1,6 @@
-use rocket::{response::status::NotFound, serde::json::Json};
+use rocket::{response::status::NotFound, serde::json::Json, State};
+
+use crate::App;
 
 #[get("/snippet/<id>")]
 pub fn snippet_view(id: usize) -> Result<Json<String>, NotFound<String>> {
@@ -10,6 +12,9 @@ pub fn snippet_view(id: usize) -> Result<Json<String>, NotFound<String>> {
 }
 
 #[post("/snippet/create")]
-pub fn snippet_create() -> Json<String> {
+pub async fn snippet_create(app: &State<App>) -> Json<String> {
+	app.snippets
+		.insert(String::from("Hey"), String::from("Ok"))
+		.await;
 	Json(String::from("Create a new snippet"))
 }

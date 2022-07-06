@@ -1,8 +1,9 @@
 use clap::Parser;
-use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
+use sqlx::postgres::PgPoolOptions;
 
 mod handlers;
 mod logger;
+mod models;
 
 #[macro_use]
 extern crate rocket;
@@ -14,8 +15,8 @@ struct Arguments {
 	port: u16,
 }
 
-struct App {
-	pool: Pool<Postgres>,
+pub struct App {
+	snippets: models::SnippetModel,
 }
 
 #[launch]
@@ -29,16 +30,21 @@ async fn rocket() -> _ {
 	// setup postgresql pool
 	let pool = PgPoolOptions::new()
 		.max_connections(5)
-		.connect("postgres://postgres:password@localhost/test")
+		.connect("postgres://local:local@localhost/snippetbox")
 		.await
 		.expect("tried to setup postgres connection pool");
 
 	// when executing the binary, we want to provide some basic config options
 	let args = Arguments::parse();
-	info!("{:?}", args); // TODO attach custom arguments as server config
+	let figment = rocket::Config::figment().merge(("port", args.port));
+
+	// init new App instance
+	let app = App {
+		snippets: models::SnippetModel::new(pool),
+	};
 
 	// start the thing
-	rocket::build().manage(App { pool }).mount(
+	rocket::custom(figment).manage(app).mount(
 		"/",
 		routes![handlers::snippet_view, handlers::snippet_create],
 	)
